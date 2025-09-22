@@ -1,0 +1,30 @@
+{
+    "projects": {
+        "my-web-app": {
+            "id": "my-web-app",
+            "name": "My Awesome Web App",
+            "branch": "main",
+            "project_path_on_server": "/home/ubuntu/my-web-app",
+            "gitlab_webhook_secret": "SUPER_SECRET_TOKEN_12345",
+            "server": {
+                "host": "172.168.10.35",
+                "user": "ubuntu",
+                "port": 22,
+                "ssh_key_path": "/Users/your_name/.ssh/id_rsa"
+            }
+        },
+       "data-processing-service": {
+            "id": "data-processing-service",
+            "name": "Data Processing Service",
+            "branch": "develop",
+            "project_path_on_server": "/var/www/data-service",
+            "gitlab_webhook_secret": "ANOTHER_VERY_SECRET_TOKEN",
+            "server": {
+                "host": "10.0.0.50",
+                "user": "service_runner",
+                "port": 22,
+                "ssh_key_path": "/Users/your_name/.ssh/id_rsa"
+            }
+        }
+    }
+}
