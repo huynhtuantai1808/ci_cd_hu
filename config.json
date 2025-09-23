@@ -1,21 +1,23 @@
 {
     "projects": {
-        "my-web-app": {
-            "id": "my-web-app",
+        "my-web-app-key": {
+            "id": "my-web-app-key",
             "name": "My Awesome Web App",
             "branch": "main",
             "project_path_on_server": "/home/ubuntu/my-web-app",
             "gitlab_webhook_secret": "SUPER_SECRET_TOKEN_12345",
             "server": {
-                "host": "172.168.10.35",
+                "host": "171.244.202.14",
                 "user": "ubuntu",
                 "port": 22,
-                "ssh_key_path": "/home/ubuntu/.ssh/id_rsa"
+                "auth_method": "key",
+                "ssh_key_path": "/home/ubuntu/.ssh/id_rsa",
+                "password": ""
             }
         },
-       "data-processing-service": {
-            "id": "data-processing-service",
-            "name": "Data Processing Service",
+        "data-service-password": {
+            "id": "data-service-password",
+            "name": "Data Service (Dùng Password)",
             "branch": "develop",
             "project_path_on_server": "/var/www/data-service",
             "gitlab_webhook_secret": "ANOTHER_VERY_SECRET_TOKEN",
@@ -23,8 +25,11 @@
                 "host": "10.0.0.50",
                 "user": "service_runner",
                 "port": 22,
-                "ssh_key_path": "/Users/your_name/.ssh/id_rsa"
+                "auth_method": "password",
+                "ssh_key_path": "",
+                "password": "your_server_password_here"
             }
         }
     }
 }
+
