@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Deployment Hub</title>
+    <!-- Sử dụng Tailwind CSS từ CDN để có giao diện đẹp mắt -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #111827; /* gray-900 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .log-container {
+            background-color: #000;
+            color: #00ff00; /* Green text for logs */
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap; /* Wrap long lines */
+            word-wrap: break-word; /* Break words if necessary */
+        }
+        .btn-deploy {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-deploy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        .btn-deploy:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-white mb-2">CI/CD Deployment Hub</h1>
+            <p class="text-lg text-gray-400">Quản lý và triển khai các dự án của bạn một cách tập trung.</p>
+        </header>
+
+        <div id="project-list" class="space-y-6">
+            <!-- Dùng Jinja2 để lặp qua danh sách các dự án -->
+            {% for project in projects %}
+            <div class="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+                <div class="md:flex md:items-center md:justify-between">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-white">{{ project.name }}</h2>
+                        <p class="text-gray-400 mt-1">
+                            Deploy nhánh <code class="bg-gray-700 text-yellow-300 px-2 py-1 rounded">{{ project.branch }}</code>
+                            đến <code class="bg-gray-700 text-green-300 px-2 py-1 rounded">{{ project.server.user }}@{{ project.server.host }}</code>
+                        </p>
+                         <p class="text-gray-500 text-sm mt-1">
+                            Thư mục: <code class="text-gray-400">{{ project.project_path_on_server }}</code>
+                        </p>
+                    </div>
+                    <div class="mt-4 md:mt-0">
+                        <button 
+                            class="btn-deploy bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md"
+                            onclick="deploy('{{ project.id }}')">
+                            Deploy thủ công
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Khu vực hiển thị log -->
+                <div class="mt-4 hidden" id="log-wrapper-{{ project.id }}">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-2">Deployment Log:</h3>
+                    <pre id="log-{{ project.id }}" class="log-container p-4 rounded-md h-64 overflow-y-auto"></pre>
+                </div>
+            </div>
+            {% else %}
+            <div class="bg-yellow-900 text-yellow-100 p-6 rounded-lg text-center">
+                <h2 class="text-xl font-bold">Không tìm thấy dự án nào.</h2>
+                <p>Vui lòng kiểm tra và cấu hình tệp <code class="bg-gray-700 px-2 py-1 rounded">config.json</code>.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        async function deploy(projectId) {
+            const button = event.target;
+            const logWrapper = document.getElementById(`log-wrapper-${projectId}`);
+            const logElement = document.getElementById(`log-${projectId}`);
+
+            // Vô hiệu hóa nút và hiển thị log
+            button.disabled = true;
+            button.textContent = 'Đang deploy...';
+            logWrapper.classList.remove('hidden');
+            logElement.textContent = `Bắt đầu deploy cho dự án: ${projectId}...\n\n`;
+
+            try {
+                const response = await fetch(`/deploy/${projectId}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+
+                // Nối log trả về vào khu vực hiển thị
+                logElement.textContent += result.log;
+
+                if (result.success) {
+                    logElement.textContent += '\n\n✅ DEPLOY THÀNH CÔNG!';
+                    button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    button.classList.add('bg-green-600');
+                    button.textContent = 'Deploy thành công';
+                } else {
+                    logElement.textContent += '\n\n❌ DEPLOY THẤT BẠI!';
+                     button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    button.classList.add('bg-red-600');
+                    button.textContent = 'Deploy thất bại';
+                }
+
+            } catch (error) {
+                logElement.textContent += `\n\n❌ Lỗi phía client: ${error}`;
+            } finally {
+                // Kích hoạt lại nút sau một khoảng thời gian
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.classList.remove('bg-green-600', 'bg-red-600');
+                    button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    button.textContent = 'Deploy thủ công';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>
