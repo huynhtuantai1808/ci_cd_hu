@@ -7,7 +7,7 @@
             "project_path_on_server": "/home/ubuntu/my-web-app",
             "gitlab_webhook_secret": "SUPER_SECRET_TOKEN_12345",
             "server": {
-                "host": "171.244.202.14",
+                "host": "",
                 "user": "ubuntu",
                 "port": 22,
                 "auth_method": "key",
@@ -17,7 +17,7 @@
         },
         "data-service-password": {
             "id": "data-service-password",
-            "name": "Data Service (Dùng Password)",
+            "name": "Data Service",
             "branch": "develop",
             "project_path_on_server": "/var/www/data-service",
             "gitlab_webhook_secret": "ANOTHER_VERY_SECRET_TOKEN",
@@ -25,11 +25,10 @@
                 "host": "10.0.0.50",
                 "user": "service_runner",
                 "port": 22,
-                "auth_method": "password",
+                "auth_method": "key",
                 "ssh_key_path": "",
                 "password": "your_server_password_here"
             }
         }
     }
 }
-
