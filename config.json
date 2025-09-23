@@ -10,7 +10,7 @@
                 "host": "172.168.10.35",
                 "user": "ubuntu",
                 "port": 22,
-                "ssh_key_path": "/Users/your_name/.ssh/id_rsa"
+                "ssh_key_path": "/home/ubuntu/.ssh/id_rsa"
             }
         },
        "data-processing-service": {
