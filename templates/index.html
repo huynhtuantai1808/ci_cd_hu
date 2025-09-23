@@ -70,11 +70,11 @@
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label for="id" class="form-label block mb-2">Project ID (duy nhất, không dấu, không khoảng trắng)</label>
+                        <label for="id" class="form-label block mb-2">Project ID (duy nhất)</label>
                         <input type="text" id="id" name="id" class="form-input w-full p-2 rounded" required>
                     </div>
                     <div>
-                        <label for="name" class="form-label block mb-2">Tên dự án (hiển thị)</label>
+                        <label for="name" class="form-label block mb-2">Tên dự án</label>
                         <input type="text" id="name" name="name" class="form-input w-full p-2 rounded" required>
                     </div>
                 </div>
@@ -98,22 +98,27 @@
                     <input type="text" id="project_path_on_server" name="project_path_on_server" class="form-input w-full p-2 rounded" required>
                 </div>
                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label for="server_host" class="form-label block mb-2">Server Host (IP/Domain)</label>
-                        <input type="text" id="server_host" name="server_host" class="form-input w-full p-2 rounded" required>
-                    </div>
-                    <div>
-                        <label for="server_user" class="form-label block mb-2">Server User</label>
-                        <input type="text" id="server_user" name="server_user" class="form-input w-full p-2 rounded" required>
-                    </div>
-                     <div>
-                        <label for="server_port" class="form-label block mb-2">Server Port</label>
-                        <input type="number" id="server_port" name="server_port" value="22" class="form-input w-full p-2 rounded" required>
+                    <div><label for="server_host" class="form-label block mb-2">Server Host</label><input type="text" id="server_host" name="server_host" class="form-input w-full p-2 rounded" required></div>
+                    <div><label for="server_user" class="form-label block mb-2">Server User</label><input type="text" id="server_user" name="server_user" class="form-input w-full p-2 rounded" required></div>
+                    <div><label for="server_port" class="form-label block mb-2">Server Port</label><input type="number" id="server_port" name="server_port" value="22" class="form-input w-full p-2 rounded" required></div>
+                </div>
+
+                <div>
+                    <label class="form-label block mb-2">Phương thức xác thực</label>
+                    <div class="flex items-center space-x-6 mt-2 text-white">
+                        <label class="flex items-center"><input type="radio" name="auth_method" value="key" class="mr-2" checked onchange="toggleAuthFields()"> SSH Key</label>
+                        <label class="flex items-center"><input type="radio" name="auth_method" value="password" class="mr-2" onchange="toggleAuthFields()"> Password</label>
                     </div>
                 </div>
-                <div>
+
+                <div id="ssh_key_field_wrapper">
                     <label for="server_ssh_key_path" class="form-label block mb-2">Đường dẫn SSH Key trên Hub</label>
                     <input type="text" id="server_ssh_key_path" name="server_ssh_key_path" class="form-input w-full p-2 rounded" placeholder="Vd: /home/user/.ssh/id_rsa">
+                </div>
+
+                <div id="password_field_wrapper" class="hidden">
+                    <label for="server_password" class="form-label block mb-2">Mật khẩu Server</label>
+                    <input type="password" id="server_password" name="server_password" class="form-input w-full p-2 rounded" autocomplete="new-password" placeholder="Để trống nếu không muốn thay đổi">
                 </div>
                 
                 <div class="flex justify-end space-x-4 pt-6">
@@ -125,36 +130,59 @@
     </div>
     
     <script>
+        // ... (phần code deploy, deleteProject không đổi) ...
         const modal = document.getElementById('project-modal');
         const form = document.getElementById('project-form');
         const modalTitle = document.getElementById('modal-title');
         const formModeInput = document.getElementById('form-mode');
         const idInput = document.getElementById('id');
 
+        function toggleAuthFields() {
+            const authMethod = document.querySelector('input[name="auth_method"]:checked').value;
+            const keyField = document.getElementById('ssh_key_field_wrapper');
+            const passField = document.getElementById('password_field_wrapper');
+            if (authMethod === 'key') {
+                keyField.classList.remove('hidden');
+                passField.classList.add('hidden');
+            } else {
+                keyField.classList.add('hidden');
+                passField.classList.remove('hidden');
+            }
+        }
+
         function openModal(project = null) {
             form.reset();
             if (project) {
                 // Chế độ sửa
                 modalTitle.textContent = 'Chỉnh sửa dự án';
-                formModeInput.value = project.id; // Lưu ID để biết đang sửa dự án nào
+                formModeInput.value = project.id;
                 idInput.value = project.id;
                 idInput.readOnly = true;
                 
                 document.getElementById('name').value = project.name;
                 document.getElementById('branch').value = project.branch;
                 document.getElementById('project_path_on_server').value = project.project_path_on_server;
-                // Không điền giá trị cũ của secret vào form để bảo mật
+                
+                // Không điền mật khẩu/secret cũ
                 document.getElementById('gitlab_webhook_secret').value = ""; 
+                document.getElementById('server_password').value = "";
+
                 document.getElementById('server_host').value = project.server.host;
                 document.getElementById('server_user').value = project.server.user;
                 document.getElementById('server_port').value = project.server.port;
-                document.getElementById('server_ssh_key_path').value = project.server.ssh_key_path;
+                document.getElementById('server_ssh_key_path').value = project.server.ssh_key_path || "";
+                
+                const authMethod = project.server.auth_method || 'key';
+                document.querySelector(`input[name="auth_method"][value="${authMethod}"]`).checked = true;
+
             } else {
                 // Chế độ thêm mới
                 modalTitle.textContent = 'Thêm dự án mới';
                 formModeInput.value = 'add';
                 idInput.readOnly = false;
+                document.querySelector('input[name="auth_method"][value="key"]').checked = true;
             }
+            toggleAuthFields(); // Cập nhật hiển thị trường auth
             modal.classList.remove('hidden');
         }
 
