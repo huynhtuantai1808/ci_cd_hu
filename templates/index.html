@@ -86,7 +86,7 @@
                     </div>
                      <div>
                         <label for="gitlab_webhook_secret" class="form-label block mb-2">GitLab Webhook Secret</label>
-                        <input type="text" id="gitlab_webhook_secret" name="gitlab_webhook_secret" class="form-input w-full p-2 rounded">
+                        <input type="password" id="gitlab_webhook_secret" name="gitlab_webhook_secret" class="form-input w-full p-2 rounded" autocomplete="new-password" placeholder="Để trống nếu không muốn thay đổi">
                     </div>
                 </div>
 
@@ -143,7 +143,8 @@
                 document.getElementById('name').value = project.name;
                 document.getElementById('branch').value = project.branch;
                 document.getElementById('project_path_on_server').value = project.project_path_on_server;
-                document.getElementById('gitlab_webhook_secret').value = project.gitlab_webhook_secret;
+                // Không điền giá trị cũ của secret vào form để bảo mật
+                document.getElementById('gitlab_webhook_secret').value = ""; 
                 document.getElementById('server_host').value = project.server.host;
                 document.getElementById('server_user').value = project.server.user;
                 document.getElementById('server_port').value = project.server.port;
