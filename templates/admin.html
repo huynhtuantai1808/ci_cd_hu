@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - CI/CD Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ... (Copy style từ index.html nếu cần) ... */
+        body { background-color: #111827; color: #d1d5db; }
+        .btn { transition: all 0.2s ease-in-out; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.75); }
+        .form-input { background-color: #374151; border: 1px solid #4b5563; color: white; }
+        .form-label { color: #9ca3af; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold text-white mb-2">Admin Panel</h1>
+                    <p class="text-lg text-gray-400">Quản lý người dùng hệ thống.</p>
+                </div>
+                 <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('index') }}" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Dashboard</a>
+                    <a href="{{ url_for('logout') }}" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Đăng xuất</a>
+                </div>
+            </div>
+             <div class="mt-8 flex justify-end">
+                <button onclick="openUserModal()" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md">
+                    + Thêm người dùng mới
+                </button>
+            </div>
+        </header>
+
+        <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+            <table class="min-w-full text-left text-sm text-gray-300">
+                <thead class="bg-gray-900 text-xs text-gray-400 uppercase">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Username</th>
+                        <th scope="col" class="px-6 py-3">Quyền Admin</th>
+                        <th scope="col" class="px-6 py-3 text-right">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user_id, user in users.items() %}
+                    <tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="px-6 py-4 font-medium text-white">{{ user.username }}</td>
+                        <td class="px-6 py-4">
+                            {% if user.is_admin %}
+                                <span class="bg-green-900 text-green-300 text-xs font-medium me-2 px-2.5 py-0.5 rounded">Có</span>
+                            {% else %}
+                                <span class="bg-red-900 text-red-300 text-xs font-medium me-2 px-2.5 py-0.5 rounded">Không</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 flex justify-end space-x-2">
+                            <button onclick='openUserModal({{ user | tojson }})' class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-xs">Sửa</button>
+                            <button onclick="deleteUser('{{ user.id }}')" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-1 px-3 rounded text-xs">Xóa</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Modal for Add/Edit User -->
+    <div id="user-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+            <form id="user-form" onsubmit="saveUser(event)" class="p-8 space-y-6">
+                <h2 id="modal-title" class="text-2xl font-bold text-white">Thêm người dùng mới</h2>
+                <input type="hidden" id="form-mode" value="add">
+                
+                <div>
+                    <label for="username" class="form-label block mb-2">Username</label>
+                    <input type="text" id="username" name="username" class="form-input w-full p-2 rounded" required>
+                </div>
+                <div>
+                    <label for="password" class="form-label block mb-2">Mật khẩu</label>
+                    <input type="password" id="password" name="password" class="form-input w-full p-2 rounded" autocomplete="new-password" placeholder="Để trống nếu không muốn thay đổi">
+                </div>
+                <div class="flex items-center">
+                    <input id="is_admin" name="is_admin" type="checkbox" value="true" class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-600">
+                    <label for="is_admin" class="ms-2 text-sm font-medium text-gray-300">Là Admin?</label>
+                </div>
+                
+                <div class="flex justify-end space-x-4 pt-4">
+                    <button type="button" onclick="closeUserModal()" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">Hủy</button>
+                    <button type="submit" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('user-modal');
+        const form = document.getElementById('user-form');
+        const modalTitle = document.getElementById('modal-title');
+        const formModeInput = document.getElementById('form-mode');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const isAdminCheckbox = document.getElementById('is_admin');
+
+        function openUserModal(user = null) {
+            form.reset();
+            if (user) {
+                // Edit mode
+                modalTitle.textContent = 'Chỉnh sửa người dùng';
+                formModeInput.value = user.id;
+                usernameInput.value = user.username;
+                usernameInput.readOnly = true;
+                passwordInput.placeholder = "Để trống nếu không muốn thay đổi";
+                isAdminCheckbox.checked = user.is_admin;
+            } else {
+                // Add mode
+                modalTitle.textContent = 'Thêm người dùng mới';
+                formModeInput.value = 'add';
+                usernameInput.readOnly = false;
+                passwordInput.placeholder = "";
+                passwordInput.required = true;
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeUserModal() {
+            modal.classList.add('hidden');
+        }
+
+        async function saveUser(event) {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const is_admin = formData.get('is_admin') === 'true'; // Convert checkbox value
+            const data = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                is_admin: is_admin
+            };
+            
+            const mode = formModeInput.value;
+            let url, method;
+
+            if (mode === 'add') {
+                url = '/api/users';
+                method = 'POST';
+            } else {
+                url = `/api/users/${mode}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Thành công: ' + result.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            } catch (error) {
+                alert('Lỗi kết nối đến server: ' + error);
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa người dùng "${userId}" không?`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Thành công: ' + result.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + result.message);
+                }
+            } catch (error) {
+                alert('Lỗi kết nối đến server: ' + error);
+            }
+        }
+    </script>
+</body>
+</html>
