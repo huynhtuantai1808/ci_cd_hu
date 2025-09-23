@@ -91,6 +91,9 @@ def add_project():
     if not project_id:
         return jsonify({"success": False, "message": "Project ID là bắt buộc."}), 400
     
+    if 'projects' not in config:
+        config['projects'] = {}
+        
     if project_id in config['projects']:
         return jsonify({"success": False, "message": f"Project ID '{project_id}' đã tồn tại."}), 409
         
@@ -121,23 +124,26 @@ def update_project(project_id):
     data = request.json
     config = get_config()
 
-    if project_id not in config['projects']:
+    if project_id not in config.get('projects', {}):
         return jsonify({"success": False, "message": "Không tìm thấy dự án."}), 404
 
-    # Cập nhật thông tin dự án
-    config['projects'][project_id] = {
-        "id": project_id,
-        "name": data.get("name", config['projects'][project_id]['name']),
-        "branch": data.get("branch", config['projects'][project_id]['branch']),
-        "project_path_on_server": data.get("project_path_on_server", config['projects'][project_id]['project_path_on_server']),
-        "gitlab_webhook_secret": data.get("gitlab_webhook_secret", config['projects'][project_id]['gitlab_webhook_secret']),
-        "server": {
-            "host": data.get("server_host", config['projects'][project_id]['server']['host']),
-            "user": data.get("server_user", config['projects'][project_id]['server']['user']),
-            "port": int(data.get("server_port", config['projects'][project_id]['server']['port'])),
-            "ssh_key_path": data.get("server_ssh_key_path", config['projects'][project_id]['server']['ssh_key_path'])
-        }
-    }
+    # Lấy ra dự án cần cập nhật
+    project_to_update = config['projects'][project_id]
+
+    # Cập nhật các trường thông tin
+    project_to_update['name'] = data.get("name", project_to_update['name'])
+    project_to_update['branch'] = data.get("branch", project_to_update['branch'])
+    project_to_update['project_path_on_server'] = data.get("project_path_on_server", project_to_update['project_path_on_server'])
+    
+    # Chỉ cập nhật secret nếu người dùng cung cấp giá trị mới (không rỗng)
+    new_secret = data.get("gitlab_webhook_secret")
+    if new_secret:
+        project_to_update['gitlab_webhook_secret'] = new_secret
+
+    project_to_update['server']['host'] = data.get("server_host", project_to_update['server']['host'])
+    project_to_update['server']['user'] = data.get("server_user", project_to_update['server']['user'])
+    project_to_update['server']['port'] = int(data.get("server_port", project_to_update['server']['port']))
+    project_to_update['server']['ssh_key_path'] = data.get("server_ssh_key_path", project_to_update['server']['ssh_key_path'])
 
     if save_config(config):
         return jsonify({"success": True, "message": "Cập nhật dự án thành công."})
@@ -149,7 +155,7 @@ def delete_project(project_id):
     """API để xóa một dự án."""
     config = get_config()
     
-    if project_id not in config['projects']:
+    if project_id not in config.get('projects', {}):
         return jsonify({"success": False, "message": "Không tìm thấy dự án."}), 404
         
     del config['projects'][project_id]
