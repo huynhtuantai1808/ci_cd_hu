@@ -7,7 +7,7 @@
             "project_path_on_server": "/home/ubuntu/my-web-app",
             "gitlab_webhook_secret": "SUPER_SECRET_TOKEN_12345",
             "server": {
-                "host": "171.244.202.14",
+                "host": "",
                 "user": "ubuntu",
                 "port": 22,
                 "auth_method": "key",
