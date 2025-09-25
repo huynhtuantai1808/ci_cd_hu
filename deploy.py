@@ -60,19 +60,19 @@ def trigger_deployment(project_id):
 #             "echo '--- Cập nhật code hoàn tất ---'"
 #         ]
         
-        for cmd in git_commands:
-            log_output.append(f"\n$ {cmd}")
-            stdin, stdout, stderr = ssh.exec_command(cmd)
-            exit_status = stdout.channel.recv_exit_status()
-            stdout_log = stdout.read().decode('utf-8').strip()
-            stderr_log = stderr.read().decode('utf-8').strip()
+        # for cmd in git_commands:
+        #     log_output.append(f"\n$ {cmd}")
+        #     stdin, stdout, stderr = ssh.exec_command(cmd)
+        #     exit_status = stdout.channel.recv_exit_status()
+        #     stdout_log = stdout.read().decode('utf-8').strip()
+        #     stderr_log = stderr.read().decode('utf-8').strip()
             
-            if stdout_log: log_output.append(stdout_log)
-            if stderr_log: log_output.append(f"LỖI: {stderr_log}")
+        #     if stdout_log: log_output.append(stdout_log)
+        #     if stderr_log: log_output.append(f"LỖI: {stderr_log}")
             
-            if exit_status != 0:
-                log_output.append(f"Lệnh thất bại với mã lỗi {exit_status}. Dừng deploy.")
-                return False, "\n".join(log_output)
+        #     if exit_status != 0:
+        #         log_output.append(f"Lệnh thất bại với mã lỗi {exit_status}. Dừng deploy.")
+        #         return False, "\n".join(log_output)
 
         # --- Bước 2: Post-deployment Commands ---
         if post_deploy_commands:
