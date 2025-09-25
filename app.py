@@ -92,14 +92,41 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    """Route chính, hiển thị giao diện người dùng (GUI)."""
+    """Route chính, hiển thị danh sách dự án đã được lọc theo quyền."""
     config = get_data('config.json')
-    projects = config.get('projects', {})
-    return render_template('index.html', projects=projects)
+    all_projects = config.get('projects', {})
+    
+    # Lọc dự án dựa trên quyền của user
+    if session.get('is_admin'):
+        visible_projects = all_projects
+    else:
+        current_user = session.get('username')
+        visible_projects = {
+            pid: p for pid, p in all_projects.items() 
+            if current_user in p.get('allowed_users', [])
+        }
+        
+    return render_template('index.html', projects=visible_projects)
 
 @app.route('/deploy/<project_id>', methods=['POST'])
 @login_required
 def manual_deploy(project_id):
+    """Thực hiện deploy và kiểm tra quyền trước."""
+    config = get_data('config.json')
+    project = config.get('projects', {}).get(project_id)
+    
+    if not project:
+        return jsonify({"success": False, "log": "Lỗi: Không tìm thấy dự án."}), 404
+
+    # Kiểm tra quyền: Admin hoặc user có trong danh sách allowed_users
+    is_allowed = (
+        session.get('is_admin') or 
+        session.get('username') in project.get('allowed_users', [])
+    )
+
+    if not is_allowed:
+        return jsonify({"success": False, "log": "Lỗi: Bạn không có quyền deploy dự án này."}), 403
+
     print(f"Manual deployment for '{project_id}' requested by user '{session['username']}'")
     success, log = trigger_deployment(project_id)
     return jsonify({"success": success, "log": log})
@@ -168,6 +195,13 @@ def delete_user(user_id):
 
 # --- API quản lý Project (Yêu cầu quyền Admin) ---
 
+def process_allowed_users(users_string):
+    """Hàm xử lý chuỗi username thành một list."""
+    if not users_string or not isinstance(users_string, str):
+        return []
+    # Tách chuỗi bằng dấu phẩy, loại bỏ khoảng trắng thừa, và lọc ra các phần tử rỗng
+    return [user.strip() for user in users_string.split(',') if user.strip()]
+
 @app.route('/api/projects', methods=['POST'])
 @login_required
 @admin_required
@@ -180,10 +214,13 @@ def add_project():
     if 'projects' not in config: config['projects'] = {}
     if project_id in config['projects']: return jsonify({"success": False, "message": f"Project ID '{project_id}' đã tồn tại."}), 409
     
+    allowed_users = process_allowed_users(data.get("allowed_users", ""))
+    
     new_project = {
         "id": project_id,
         "name": data.get("name", ""),
         "branch": data.get("branch", "main"),
+        "allowed_users": allowed_users,
         "project_path_on_server": data.get("project_path_on_server", ""),
         "gitlab_webhook_secret": data.get("gitlab_webhook_secret", ""),
         "post_deploy_commands": data.get("post_deploy_commands", []),
@@ -211,6 +248,7 @@ def update_project(project_id):
     project_to_update = config['projects'][project_id]
     project_to_update['name'] = data.get("name", project_to_update.get('name'))
     project_to_update['branch'] = data.get("branch", project_to_update.get('branch'))
+    project_to_update['allowed_users'] = process_allowed_users(data.get("allowed_users", ""))
     project_to_update['project_path_on_server'] = data.get("project_path_on_server", project_to_update.get('project_path_on_server'))
     project_to_update['post_deploy_commands'] = data.get("post_deploy_commands", project_to_update.get('post_deploy_commands', []))
 
