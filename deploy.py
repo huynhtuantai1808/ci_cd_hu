@@ -50,15 +50,15 @@ def trigger_deployment(project_id):
         log_output.append("Kết nối thành công.")
         
         # --- Bước 1: Git Commands ---
-        git_commands = [
-            f"echo '--- Bắt đầu cập nhật code cho nhánh {branch} ---'",
-            f"cd {project_path} || exit 1", # Thoát nếu không vào được thư mục
-            "git status",
-#            "git reset --hard",
-#           f"git checkout {branch}",
-            f"git pull origin {branch}",
-            "echo '--- Cập nhật code hoàn tất ---'"
-        ]
+#         git_commands = [
+#             f"echo '--- Bắt đầu cập nhật code cho nhánh {branch} ---'",
+#             f"cd {project_path} || exit 1", # Thoát nếu không vào được thư mục
+# #           "git status",
+# #            "git reset --hard",
+# #           f"git checkout {branch}",
+#             f"git pull origin {branch}",
+#             "echo '--- Cập nhật code hoàn tất ---'"
+#         ]
         
         for cmd in git_commands:
             log_output.append(f"\n$ {cmd}")
