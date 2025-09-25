@@ -23,7 +23,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-4xl font-bold text-white mb-2">CI/CD Deployment Hub</h1>
-                    <p class="text-lg text-gray-400">Đăng nhập với tư cách: <span class="font-bold text-yellow-300">{{ session.username }}</span></p>
+                    <p class="text-lg text-gray-400">Đăng nhập với tư cách: <span class="font-bold {{ 'text-green-400' if session.is_admin else 'text-yellow-300' }}">{{ session.username }} {% if session.is_admin %}(Admin){% endif %}</span></p>
                 </div>
                 <div class="flex items-center space-x-4">
                     {% if session.is_admin %}
@@ -32,12 +32,14 @@
                     <a href="{{ url_for('logout') }}" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Đăng xuất</a>
                 </div>
             </div>
+            {% if session.is_admin %}
             <div class="mt-8 flex items-center justify-between">
                 <p class="text-lg text-gray-400">Quản lý và triển khai các dự án của bạn.</p>
                 <button onclick="openModal()" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-md">
                     + Thêm dự án mới
                 </button>
             </div>
+            {% endif %}
         </header>
 
         <!-- Flash Messages -->
@@ -56,14 +58,20 @@
             <div class="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
                 <div class="md:flex md:items-start md:justify-between">
                     <div>
-                        <h2 class="text-2xl font-semibold text-white">{{ project.name }} <span class="text-sm font-mono text-gray-500">({{ project.id }})</span></h2>
+                        <h2 class="text-2xl font-semibold text-white">{{ project.name }} 
+                            {% if session.is_admin %}<span class="text-sm font-mono text-gray-500">({{ project.id }})</span>{% endif %}
+                        </h2>
+                        {% if session.is_admin %}
                         <p class="text-gray-400 mt-1">Deploy nhánh <code class="bg-gray-700 text-yellow-300 px-2 py-1 rounded">{{ project.branch }}</code></p>
                         <p class="text-gray-400 mt-1">Đến <code class="bg-gray-700 text-green-300 px-2 py-1 rounded">{{ project.server.user }}@{{ project.server.host }}</code></p>
                         <p class="text-gray-500 text-sm mt-1">Thư mục: <code class="text-gray-400">{{ project.project_path_on_server }}</code></p>
+                        {% endif %}
                     </div>
                     <div class="mt-4 md:mt-0 flex items-center space-x-2 flex-shrink-0">
+                        {% if session.is_admin %}
                         <button onclick='openModal({{ project | tojson }})' class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-sm">Sửa</button>
                         <button onclick="deleteProject('{{ project.id }}')" class="btn bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg text-sm">Xóa</button>
+                        {% endif %}
                         <button onclick="deploy('{{ project.id }}')" id="deploy-btn-{{ project.id }}" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md">Deploy</button>
                     </div>
                 </div>
@@ -75,35 +83,138 @@
             {% else %}
             <div class="bg-yellow-900 text-yellow-100 p-6 rounded-lg text-center">
                 <h2 class="text-xl font-bold">Chưa có dự án nào.</h2>
-                <p>Hãy nhấn nút "Thêm dự án mới" để bắt đầu.</p>
+                {% if session.is_admin %}<p>Hãy nhấn nút "Thêm dự án mới" để bắt đầu.</p>{% endif %}
             </div>
             {% endfor %}
         </div>
     </div>
 
-    <!-- Modal for Add/Edit Project -->
+    <!-- Modal for Add/Edit Project (chỉ dành cho Admin) -->
+    {% if session.is_admin %}
     <div id="project-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
-        <!-- ... (Nội dung modal không thay đổi so với phiên bản trước) ... -->
         <div class="bg-gray-800 rounded-lg shadow-2xl w-full max-w-3xl border border-gray-700 max-h-full overflow-y-auto">
             <form id="project-form" onsubmit="saveProject(event)" class="p-8 space-y-6">
                 <h2 id="modal-title" class="text-3xl font-bold text-white mb-6">Thêm dự án mới</h2>
                 <input type="hidden" id="form-mode" value="add">
+                
+                <!-- ... các trường input cơ bản ... -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="id" class="form-label block mb-2">Project ID (duy nhất)</label><input type="text" id="id" name="id" class="form-input w-full p-2 rounded" required></div><div><label for="name" class="form-label block mb-2">Tên dự án</label><input type="text" id="name" name="name" class="form-input w-full p-2 rounded" required></div></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label for="branch" class="form-label block mb-2">Nhánh Git</label><input type="text" id="branch" name="branch" class="form-input w-full p-2 rounded" required></div><div><label for="gitlab_webhook_secret" class="form-label block mb-2">GitLab Webhook Secret</label><input type="password" id="gitlab_webhook_secret" name="gitlab_webhook_secret" class="form-input w-full p-2 rounded" autocomplete="new-password" placeholder="Để trống nếu không muốn thay đổi"></div></div>
-                <hr class="border-gray-600"><h3 class="text-xl font-semibold text-white pt-2">Thông tin Server</h3>
+                
+                <hr class="border-gray-600">
+                <h3 class="text-xl font-semibold text-white pt-2">Lệnh tùy chỉnh sau Deploy</h3>
+                <div>
+                    <label for="post_deploy_commands" class="form-label block mb-2">Các lệnh thực thi trên server (mỗi lệnh một dòng)</label>
+                    <textarea id="post_deploy_commands" name="post_deploy_commands" rows="4" class="form-input w-full p-2 rounded font-mono" placeholder="Vd:&#10;npm install&#10;pm2 restart my-app"></textarea>
+                </div>
+                
+                <hr class="border-gray-600">
+                <h3 class="text-xl font-semibold text-white pt-2">Thông tin Server</h3>
+                <!-- ... các trường input server ... -->
                 <div><label for="project_path_on_server" class="form-label block mb-2">Đường dẫn dự án trên Server</label><input type="text" id="project_path_on_server" name="project_path_on_server" class="form-input w-full p-2 rounded" required></div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div><label for="server_host" class="form-label block mb-2">Server Host</label><input type="text" id="server_host" name="server_host" class="form-input w-full p-2 rounded" required></div><div><label for="server_user" class="form-label block mb-2">Server User</label><input type="text" id="server_user" name="server_user" class="form-input w-full p-2 rounded" required></div><div><label for="server_port" class="form-label block mb-2">Server Port</label><input type="number" id="server_port" name="server_port" value="22" class="form-input w-full p-2 rounded" required></div></div>
                 <div><label class="form-label block mb-2">Phương thức xác thực</label><div class="flex items-center space-x-6 mt-2 text-white"><label class="flex items-center"><input type="radio" name="auth_method" value="key" class="mr-2" checked onchange="toggleAuthFields()"> SSH Key</label><label class="flex items-center"><input type="radio" name="auth_method" value="password" class="mr-2" onchange="toggleAuthFields()"> Password</label></div></div>
                 <div id="ssh_key_field_wrapper"><label for="server_ssh_key_path" class="form-label block mb-2">Đường dẫn SSH Key trên Hub</label><input type="text" id="server_ssh_key_path" name="server_ssh_key_path" class="form-input w-full p-2 rounded" placeholder="Vd: /home/user/.ssh/id_rsa"></div>
                 <div id="password_field_wrapper" class="hidden"><label for="server_password" class="form-label block mb-2">Mật khẩu Server</label><input type="password" id="server_password" name="server_password" class="form-input w-full p-2 rounded" autocomplete="new-password" placeholder="Để trống nếu không muốn thay đổi"></div>
-                <div class="flex justify-end space-x-4 pt-6"><button type="button" onclick="closeModal()" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Hủy</button><button type="submit" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Lưu</button></div>
+                
+                <div class="flex justify-end space-x-4 pt-6">
+                    <button type="button" onclick="closeModal()" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Hủy</button>
+                    <button type="submit" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Lưu</button>
+                </div>
             </form>
         </div>
     </div>
+    {% endif %}
     
     <script>
-        // ... (Toàn bộ script của modal và deploy không thay đổi so với phiên bản trước) ...
-        const modal = document.getElementById('project-modal'); const form = document.getElementById('project-form'); const modalTitle = document.getElementById('modal-title'); const formModeInput = document.getElementById('form-mode'); const idInput = document.getElementById('id'); function toggleAuthFields() { const authMethod = document.querySelector('input[name="auth_method"]:checked').value; const keyField = document.getElementById('ssh_key_field_wrapper'); const passField = document.getElementById('password_field_wrapper'); if (authMethod === 'key') { keyField.classList.remove('hidden'); passField.classList.add('hidden'); } else { keyField.classList.add('hidden'); passField.classList.remove('hidden'); } } function openModal(project = null) { form.reset(); if (project) { modalTitle.textContent = 'Chỉnh sửa dự án'; formModeInput.value = project.id; idInput.value = project.id; idInput.readOnly = true; document.getElementById('name').value = project.name; document.getElementById('branch').value = project.branch; document.getElementById('project_path_on_server').value = project.project_path_on_server; document.getElementById('gitlab_webhook_secret').value = ""; document.getElementById('server_password').value = ""; document.getElementById('server_host').value = project.server.host; document.getElementById('server_user').value = project.server.user; document.getElementById('server_port').value = project.server.port; document.getElementById('server_ssh_key_path').value = project.server.ssh_key_path || ""; const authMethod = project.server.auth_method || 'key'; document.querySelector(`input[name="auth_method"][value="${authMethod}"]`).checked = true; } else { modalTitle.textContent = 'Thêm dự án mới'; formModeInput.value = 'add'; idInput.readOnly = false; document.querySelector('input[name="auth_method"][value="key"]').checked = true; } toggleAuthFields(); modal.classList.remove('hidden'); } function closeModal() { modal.classList.add('hidden'); } async function saveProject(event) { event.preventDefault(); const formData = new FormData(form); const data = Object.fromEntries(formData.entries()); const mode = formModeInput.value; let url, method; if (mode === 'add') { url = '/api/projects'; method = 'POST'; } else { url = `/api/projects/${mode}`; method = 'PUT'; } try { const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); const result = await response.json(); if (response.ok) { alert('Thành công: ' + result.message); window.location.reload(); } else { alert('Lỗi: ' + result.message); } } catch (error) { alert('Lỗi kết nối đến server: ' + error); } } async function deleteProject(projectId) { if (!confirm(`Bạn có chắc chắn muốn xóa dự án "${projectId}" không?`)) { return; } try { const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' }); const result = await response.json(); if (response.ok) { alert('Thành công: ' + result.message); window.location.reload(); } else { alert('Lỗi: ' + result.message); } } catch (error) { alert('Lỗi kết nối đến server: ' + error); } } async function deploy(projectId) { const button = document.getElementById(`deploy-btn-${projectId}`); const logWrapper = document.getElementById(`log-wrapper-${projectId}`); const logElement = document.getElementById(`log-${projectId}`); button.disabled = true; button.textContent = 'Deploying...'; logWrapper.classList.remove('hidden'); logElement.textContent = `Bắt đầu deploy cho dự án: ${projectId}...\n\n`; try { const response = await fetch(`/deploy/${projectId}`, { method: 'POST' }); const result = await response.json(); logElement.textContent += result.log; if (result.success) { logElement.textContent += '\n\n✅ DEPLOY THÀNH CÔNG!'; button.classList.remove('bg-blue-600', 'hover:bg-blue-700'); button.classList.add('bg-green-600'); button.textContent = 'Thành công'; } else { logElement.textContent += '\n\n❌ DEPLOY THẤT BẠI!'; button.classList.remove('bg-blue-600', 'hover:bg-blue-700'); button.classList.add('bg-red-600'); button.textContent = 'Thất bại'; } } catch (error) { logElement.textContent += `\n\n❌ Lỗi client: ${error}`; } finally { setTimeout(() => { button.disabled = false; button.classList.remove('bg-green-600', 'bg-red-600'); button.classList.add('bg-blue-600', 'hover:bg-blue-700'); button.textContent = 'Deploy'; }, 5000); } }
+        {% if session.is_admin %}
+        // --- Modal & Project Management Script (chỉ render cho Admin) ---
+        const modal = document.getElementById('project-modal'); const form = document.getElementById('project-form'); const modalTitle = document.getElementById('modal-title'); const formModeInput = document.getElementById('form-mode'); const idInput = document.getElementById('id'); function toggleAuthFields() { const authMethod = document.querySelector('input[name="auth_method"]:checked').value; const keyField = document.getElementById('ssh_key_field_wrapper'); const passField = document.getElementById('password_field_wrapper'); if (authMethod === 'key') { keyField.classList.remove('hidden'); passField.classList.add('hidden'); } else { keyField.classList.add('hidden'); passField.classList.remove('hidden'); } } 
+        function openModal(project = null) { 
+            form.reset(); 
+            if (project) { 
+                modalTitle.textContent = 'Chỉnh sửa dự án'; 
+                formModeInput.value = project.id; 
+                idInput.value = project.id; 
+                idInput.readOnly = true; 
+                document.getElementById('name').value = project.name; 
+                document.getElementById('branch').value = project.branch; 
+                document.getElementById('project_path_on_server').value = project.project_path_on_server;
+                // Join array to string for textarea
+                document.getElementById('post_deploy_commands').value = (project.post_deploy_commands || []).join('\n');
+                document.getElementById('gitlab_webhook_secret').value = ""; 
+                document.getElementById('server_password').value = ""; 
+                document.getElementById('server_host').value = project.server.host; 
+                document.getElementById('server_user').value = project.server.user; 
+                document.getElementById('server_port').value = project.server.port; 
+                document.getElementById('server_ssh_key_path').value = project.server.ssh_key_path || ""; 
+                const authMethod = project.server.auth_method || 'key'; 
+                document.querySelector(`input[name="auth_method"][value="${authMethod}"]`).checked = true; 
+            } else { 
+                modalTitle.textContent = 'Thêm dự án mới'; 
+                formModeInput.value = 'add'; 
+                idInput.readOnly = false; 
+                document.querySelector('input[name="auth_method"][value="key"]').checked = true; 
+            } 
+            toggleAuthFields(); 
+            modal.classList.remove('hidden'); 
+        } 
+        function closeModal() { modal.classList.add('hidden'); } 
+        async function saveProject(event) { 
+            event.preventDefault(); 
+            const formData = new FormData(form); 
+            const data = Object.fromEntries(formData.entries()); 
+            // Convert command textarea to array of strings
+            data.post_deploy_commands = data.post_deploy_commands.split('\n').map(cmd => cmd.trim()).filter(cmd => cmd.length > 0);
+            
+            const mode = formModeInput.value; 
+            let url, method; 
+            if (mode === 'add') { url = '/api/projects'; method = 'POST'; } else { url = `/api/projects/${mode}`; method = 'PUT'; } 
+            try { 
+                const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); 
+                const result = await response.json(); 
+                if (response.ok) { alert('Thành công: ' + result.message); window.location.reload(); } else { alert('Lỗi: ' + result.message); } 
+            } catch (error) { alert('Lỗi kết nối đến server: ' + error); } 
+        } 
+        async function deleteProject(projectId) { 
+            if (!confirm(`Bạn có chắc chắn muốn xóa dự án "${projectId}" không?`)) { return; } 
+            try { 
+                const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' }); 
+                const result = await response.json(); 
+                if (response.ok) { alert('Thành công: ' + result.message); window.location.reload(); } else { alert('Lỗi: ' + result.message); } 
+            } catch (error) { alert('Lỗi kết nối đến server: ' + error); } 
+        }
+        {% endif %}
+
+        // --- Deployment Script (dành cho mọi user đã login) ---
+        async function deploy(projectId) {
+            const button = document.getElementById(`deploy-btn-${projectId}`);
+            const logWrapper = document.getElementById(`log-wrapper-${projectId}`);
+            const logElement = document.getElementById(`log-${projectId}`);
+            button.disabled = true; button.textContent = 'Deploying...'; logWrapper.classList.remove('hidden'); logElement.textContent = `Bắt đầu deploy cho dự án: ${projectId}...\n\n`;
+            try {
+                const response = await fetch(`/deploy/${projectId}`, { method: 'POST' });
+                const result = await response.json();
+                logElement.textContent += result.log;
+                if (result.success) {
+                    logElement.textContent += '\n\n✅ DEPLOY THÀNH CÔNG!';
+                    button.classList.remove('bg-blue-600', 'hover:bg-blue-700'); button.classList.add('bg-green-600'); button.textContent = 'Thành công';
+                } else {
+                    logElement.textContent += '\n\n❌ DEPLOY THẤT BẠI!';
+                    button.classList.remove('bg-blue-600', 'hover:bg-blue-700'); button.classList.add('bg-red-600'); button.textContent = 'Thất bại';
+                }
+            } catch (error) {
+                logElement.textContent += `\n\n❌ Lỗi client: ${error}`;
+            } finally {
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.classList.remove('bg-green-600', 'bg-red-600');
+                    button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    button.textContent = 'Deploy';
+                }, 5000);
+            }
+        }
     </script>
 </body>
 </html>
+
