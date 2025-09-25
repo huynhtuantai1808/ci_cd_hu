@@ -54,8 +54,8 @@ def trigger_deployment(project_id):
             f"echo '--- Bắt đầu cập nhật code cho nhánh {branch} ---'",
             f"cd {project_path} || exit 1", # Thoát nếu không vào được thư mục
             "git status",
-            "git reset --hard",
-            f"git checkout {branch}",
+#            "git reset --hard",
+#           f"git checkout {branch}",
             f"git pull origin {branch}",
             "echo '--- Cập nhật code hoàn tất ---'"
         ]
